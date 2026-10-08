@@ -42,6 +42,7 @@ skills/                  官方技能目录（openclaw.plugin.json 声明）
 
 - **插件 id 已从 `openclaw-lark` 更名为 `claw-fry-cards`**（package.json / openclaw.plugin.json / index.ts 三处一致）；用户配置键 `plugins.entries.claw-fry-cards`，通道配置 `channels.feishu` 不变。
 - 流式卡片开关按宿主代际：2026.9.4+ 宿主 `streaming: { mode: "partial" }`（`replyMode` 已废弃）；旧宿主 `streaming: true` + `replyMode`。插件端两代兼容（2.0.2 起）。
+- **`streaming`/`replyMode` 必须写在 `channels.feishu`（通道账号配置）下**，不是 `plugins.entries.claw-fry-cards.config`——插件 configSchema 只声明 `panel`，写到 plugin config 里的 `feishu` 块会被静默忽略（网关不报错不警告），回复模式解析退化为 `static`（纯文本无卡片）。判定证据看日志 `reply-dispatcher` 的 `reply mode resolved` 探针行。真实事故：2026-10-08 Docker 部署配置错位排查半天才定位。TODO：后续版本可在插件启动时对 plugin config 中未识别键打 warning（网关 schema 校验目前是 loose 的）。
 - 统一面板指标来源是 agent transcript SQLite（`~/.openclaw/agents/<agent>/agent/openclaw-agent.sqlite`）；读取失败时静默省略指标段，不报错。
 - 宿主兼容下限 OpenClaw **2026.5.4**（2.0.5 起 channel-message 垫片回落 channel-runtime；无垫片的 2.0.4 为 ≥2026.5.12），见 `docs/compat-test-report.md`；SDK 子路径导出以宿主 package.json 的 exports 为准，裸的 `openclaw/plugin-sdk` 在宿主 ≥2026.8.1 已移除。
 - 构建产物分 chunk（`index.mjs` + `secret-contract-api.mjs` + `monitor-<hash>.mjs`），部署时需全部拷贝并清理旧 hash 残留；`secret-contract-api.mjs` 是插件根目录发现 shim（`secret-contract-api.js`）的 re-export 目标（密钥字段解析依赖），漏拷会导致通道无法认证。
