@@ -6,7 +6,7 @@
 
 - TypeScript, ESM, Node >= 22, 构建用 tsdown，测试用 vitest，安装依赖需 `npm install --legacy-peer-deps`（官方 fork 的 peer 依赖约束）。
 - 入口 `index.ts`：`definePluginEntry`（来自 `openclaw/plugin-sdk/plugin-entry`）注册通道 + 38 项工具契约 + hooks + CLI 诊断命令。
-- 版本线：**1.0（钩子伴侣插件形态）保留在 `v1.0.0` 标签**；main 为 2.0 通道插件。前身 claw-lark-cards 仓库已废弃合并至此。
+- 版本线：main 为**插件自身 3.x** 通道插件（唯一维护线，当前 v3.0.1+）；形态自 2.0 起固定为通道插件。**1.0（钩子伴侣插件形态）保留在 `v1.0.0` 标签**，自 2026-09-13 起冻结，仅为历史降级保留，新装不要checkout。前身 claw-lark-cards 仓库已废弃合并至此。
 
 ## Commands
 
@@ -47,5 +47,5 @@ skills/                  官方技能目录（openclaw.plugin.json 声明）
 - 宿主兼容下限 OpenClaw **2026.5.4**（2.0.5 起 channel-message 垫片回落 channel-runtime；无垫片的 2.0.4 为 ≥2026.5.12），见 `docs/compat-test-report.md`；SDK 子路径导出以宿主 package.json 的 exports 为准，裸的 `openclaw/plugin-sdk` 在宿主 ≥2026.8.1 已移除。
 - 构建产物分 chunk（`index.mjs` + `secret-contract-api.mjs` + `monitor-<hash>.mjs`），部署时需全部拷贝并清理旧 hash 残留；`secret-contract-api.mjs` 是插件根目录发现 shim（`secret-contract-api.js`）的 re-export 目标（密钥字段解析依赖），漏拷会导致通道无法认证。
 - 本地安装：`openclaw plugins install . --force --accept-capabilities`；安装源目录不能 world-writable（777 会被 `blocked plugin candidate` 拒绝）。
-- 版本号用三位 semver（1.0.0 / 2.0.0…），发版打 `v<版本>` 标签。
+- 版本号用三位 semver（1.0.0 / 2.0.0 / 3.0.0…），发版打 `v<版本>` 标签。
 - Commit messages: body should use bullet list format (unnumbered `- item`).
