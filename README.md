@@ -22,15 +22,13 @@
 
 ---
 
-## 🧭 版本说明（1.0 → 2.0）
+## 🧭 版本说明
 
-| 版本                | 形态                                                        | 获取方式                          |
-| ------------------- | ----------------------------------------------------------- | --------------------------------- |
-| **2.0**（本主线）   | **通道插件**：官方通道 2.0 适配，卡片引擎内置，替换官方通道 | `main` 分支 / `v2.0.0+` 标签      |
-| **1.0**（伴侣插件） | 钩子观测自建卡片，官方通道继续收发，不替换通道              | `git checkout v1.0.0`（降级使用） |
+当前 **`main` 分支 = 3.x 通道插件**，是唯一维护线（`v3.0.1+`）。形态自 2.0 起固定为通道插件：替代官方通道，卡片引擎内置于通道。
 
-> ⚠️ 1.0 与 2.0 架构不同，**切勿同时启用**（两套卡片会互相冲突）。  
-> 2.0 前身 [claw-lark-cards](https://github.com/techysy/claw-lark-cards) 已合并入本仓库并废弃，后续仅在此维护。
+`v1.0.0` 标签是早期的**钩子伴侣插件形态**（官方通道继续收发、不替换通道），自 2026-09-13 起已冻结，仅为历史降级保留，**新装请直接用 `main`**，不要 `checkout v1.0.0`。
+
+前身 [claw-lark-cards](https://github.com/techysy/claw-lark-cards) 已合并入本仓库并废弃，后续仅在此维护。
 
 ### 从 claw-lark-cards 升级
 
@@ -42,7 +40,7 @@ openclaw plugins uninstall openclaw-lark --force   # 按其实际目录名卸载
 
 ### 从 1.0 伴侣插件升级
 
-2.0 为通道插件，会**替换官方通道**。先卸载官方飞书通道（`openclaw plugins uninstall feishu --force`，注意该命令会删除 `channels.feishu` 配置，请备份后恢复），再安装本插件；1.0 的 `hooks.allowConversationAccess` 在 2.0 下不再需要。
+2.0+ 为通道插件，会**替换官方通道**。先卸载官方飞书通道（`openclaw plugins uninstall feishu --force`，注意该命令会删除 `channels.feishu` 配置，请备份后恢复），再安装本插件；1.0 的 `hooks.allowConversationAccess` 在 2.0+ 下不再需要。
 
 ---
 
