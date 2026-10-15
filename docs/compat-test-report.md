@@ -73,7 +73,7 @@
 | **飞书 websocket** | ✅ bot identity 解析成功，`client ready` + `ws client ready` |
 | **入站消息** | ✅ 多群真实消息持续到达并被处理 |
 | **出站回复** | ✅ `dispatch complete (queuedFinal=true, replies=1)` —— 真实消息走完「收→gate→agent→模型→回复」全链路 |
-| **卡片引擎** | ✅ `progressCard.get` 调用成功（180ms）|
+| **卡片引擎** | ✅ `progressCard.get` 调用成功（180ms）；**回复经人工确认为 🍤 卡片（非纯文本退化）**，即 `channels.feishu.streaming.mode=partial` 被正确解析、reply mode 未退化为 `static` |
 | channel-message 垫片 | ✅ 命中 `channel-outbound`（10.x 首选层）|
 | command-auth 垫片 | ✅ 旧门面 `ERR_PACKAGE_PATH_NOT_EXPORTED` → 走重建路径；原语齐全 |
 | session-store 垫片 | ✅ `getSessionEntry` 存在、`loadSessionStore`/`resolveSessionStoreEntry` 缺失 → 命中新路径 |
