@@ -305,6 +305,14 @@ npm run typecheck
 - **上游归属**：基于 [larksuite/openclaw-lark](https://github.com/larksuite/openclaw-lark)（MIT），OpenClaw 2.0 基础适配归功于 [@Mirr0ch1](https://github.com/Mirr0ch1)。
 - **安全声明**：OpenClaw 具备本地命令执行及自动化能力，飞书应用凭据切勿泄漏。建议将机器人作为**私聊办公助手**使用，加入公开群聊时需谨慎配置访问与审批策略。
 
+## 🙏 致谢
+
+感谢每一个把问题递回来的使用者 —— 反馈是这些适配能发生的前提。
+
+- **`koler`** —— 2026-10-13 反馈宿主升级到 OpenClaw 2026.10.2 后插件因依赖不兼容而失效（[#1](https://github.com/techysy/claw-fry-cards/issues/1)）。**3.1.0 的 2026.10.x 适配即由此而起**：三个 SDK 兼容垫片、`channel-outbound` 路径迁移、`getSessionEntry` 迁移、真实 10.3 全链路实测，均源于这条反馈。
+
+（若你希望以 GitHub 账号具名致谢或改用其他署名方式，欢迎在 [#1](https://github.com/techysy/claw-fry-cards/issues/1) 告知。）
+
 ## 📄 许可证
 
 [MIT](LICENSE)
