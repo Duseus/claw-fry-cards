@@ -1,5 +1,18 @@
 # Changelog
 
+## 3.1.0 (2026-10-15)
+
+适配 **OpenClaw 2026.10.x** 大版本（宿主在 10.3 移除了三个本插件依赖的 SDK 导出，旧版插件会**加载失败、整条飞书通道消失**）。
+
+- 🔌 **`channel-outbound` 改为 channel-message 垫片首选路径**：`createReplyPrefixContext` / `createTypingCallbacks` 在 10.3 由 `plugin-sdk/channel-message` 迁走（该子路径已移除）。垫片改按 `channel-outbound` → `channel-message` → `channel-runtime` 三代回落——`channel-outbound` 在 9.4 与 10.3 均存在，故向前不回溯
+- 🔐 **新增 `core/command-auth-compat` 垫片**：`plugin-sdk/command-auth` 聚合门面在 10.3 被整体移除（其导出在 9.4 已标 `@deprecated`）。官方替代 `resolveChannelMessageIngress` 入参是约 20 个结构化字段、出参与既有调用点形状不兼容，故垫片改为**用 10.3 中仍存活的保留原语按原语义重建**同一组合器（`resolveDmGroupAccessWithLists` / `resolveCommandAuthorizedFromAuthorizers` / `shouldComputeCommandAuthorized` / `expandAllowFromWithAccessGroups`），老宿主（≤9.x）直接透传原实现——逐行等价，零行为漂移
+- 🗂️ **新增 `core/session-store-compat` 垫片**：`plugin-sdk/session-store-runtime` 子路径虽仍在，但其 `loadSessionStore` / `resolveSessionStoreEntry` 两个具名导出已在 10.3 移除（**子路径比对查不到**这类破坏——import 阶段直接 SyntaxError，`try/catch` 救不了）。垫片改用 9.4 起即提供的 `getSessionEntry`，老宿主回落到旧全量存储对
+- 🧪 **修正测试 mock 目标**：`vi.mock` 目标从已移除的宿主子路径改为对应垫片模块（`createRequire` 本就绕过 `vi.mock`，旧 mock 早已是惰性伪装）
+- 📦 devDependency `openclaw` 由 `^2026.8.1` 升至 `^2026.10.3`，typecheck / 单测改在真实 10.3 宿主类型下验证
+- ⬇️ peer 下限**维持 `>=2026.5.4`**：三代回落垫片保留老路径，不牺牲既有下限
+- ✅ **验证**：`docs/compat-test-harness.mjs` 在 **2026.9.4** 与 **2026.10.3** 两个真实宿主依赖树上均 `RESULT: PASS`（import + register 全通过，API 面一致）；482 项单测、typecheck、lint（0 error）全绿
+- ⚠️ **真机 E2E 未跑**：按 `docs/compat-test-report.md` 既有结论「模块解析验证不能替代网关加载器语义」，发版前仍需在 10.x 宿主的 Docker/真机上验证飞书 websocket 全链路
+
 ## 3.0.1 (2026-09-29)
 
 修复 3.0.0 的插件加载失败（**请勿使用 3.0.0**）。

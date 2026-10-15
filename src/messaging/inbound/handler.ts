@@ -12,7 +12,8 @@
  *   5. Policy gate           → gate.ts
  *   6. User name prefetch    → enrich.ts (batch cache warm-up)
  *   7. Content resolution    → enrich.ts (media / quote, parallel)
- *   8. Command authorization → plugin-sdk/command-auth
+ *   8. Command authorization → core/command-auth-compat
+ *      (宿主 10.x 移除了 plugin-sdk/command-auth，垫片按代际重建)
  *   9. Agent dispatch        → dispatch.ts
  */
 
@@ -20,8 +21,8 @@ import type { OpenClawConfig } from 'openclaw/plugin-sdk/core';
 import type { RuntimeEnv } from 'openclaw/plugin-sdk/runtime-env';
 import type { HistoryEntry } from 'openclaw/plugin-sdk/reply-history';
 import { DEFAULT_GROUP_HISTORY_LIMIT, recordPendingHistoryEntryIfEnabled } from 'openclaw/plugin-sdk/reply-history';
-import { resolveSenderCommandAuthorization } from 'openclaw/plugin-sdk/command-auth';
 import { isNormalizedSenderAllowed } from 'openclaw/plugin-sdk/allow-from';
+import { resolveSenderCommandAuthorization } from '../../core/command-auth-compat';
 import type { FeishuMessageEvent } from '../types';
 import { getLarkAccount } from '../../core/accounts';
 import { LarkClient } from '../../core/lark-client';

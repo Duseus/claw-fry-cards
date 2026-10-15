@@ -14,7 +14,7 @@ const controllerSpies = {
   shouldSkipForUnavailable: vi.fn().mockReturnValue(false),
 };
 
-vi.mock('openclaw/plugin-sdk/channel-message', () => ({
+vi.mock('../src/core/channel-message-compat', () => ({
   createReplyPrefixContext: () => ({
     responsePrefix: '',
     responsePrefixContextProvider: () => null,

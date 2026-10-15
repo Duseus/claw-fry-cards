@@ -1,6 +1,6 @@
 # 🧪 兼容性测试报告 — claw-fry-cards 对 OpenClaw 各版本宿主
 
-- **版本**：claw-fry-cards 2.0.4（npm 正式包）· 2.0.5-dev（兼容垫片）· 1.0（伴侣插件终版）
+- **版本**：claw-fry-cards 3.1.0（10.x 适配）· 2.0.4（npm 正式包）· 2.0.5-dev（兼容垫片）· 1.0（伴侣插件终版）
 - **测试方法**：仿宿主沙箱（真实依赖树 + 递归 Proxy mock，见附录）× **真机**（Docker 2026.9.4 · 飞牛 fnOS 应用 2026.9.4）
 - **环境**：Windows x64 · Node 24 · npm registry
 
@@ -10,8 +10,31 @@
 |---|---|
 | 兼容下限（无垫片，≤2.0.4）| OpenClaw **2026.5.12**（远低于官方插件时代的 2026.2.26 口径）|
 | 兼容下限（2.0.5+ 垫片）| OpenClaw **2026.5.4** |
-| 推荐宿主 | **2026.9.4+**（Docker 与飞牛 fnOS 真机 E2E 全链路验证版本）|
+| 推荐宿主 | **2026.9.4**（Docker 与飞牛 fnOS 真机 E2E 全链路验证版本）；**2026.10.x 已适配**（加载级沙箱验证通过，真机 E2E 待跑，见下）|
 | 断崖方向 | 裸导出 `./plugin-sdk` 在 2026.8.1 移除——新宿主跑不了旧插件（官方 openclaw-lark 失效原因），反向无此问题 |
+
+## 🔻 2026.10.3 断崖与本插件适配（3.1.0）
+
+宿主 10.3 的 `plugin-sdk` 子路径 **338 → 344，净增 6，但移除 9 个**（新增≠兼容，移除才是断崖）：
+
+```
+移除：/channel-message  /command-auth  /config-runtime  /channel-reply-pipeline
+      /infra-runtime  /agent-harness-task-runtime  /discord  /channel-lifecycle  /telegram-account
+```
+
+本插件命中 2 个子路径移除（其余 7 项未使用），另有 **1 处「子路径仍在、具名导出消失」的隐性破坏**（子路径比对查不到）：
+
+| # | 破坏点 | 类型 | 3.1.0 适配 |
+|---|---|---|---|
+| 1 | `plugin-sdk/channel-message` | 子路径移除 | 垫片首选改 `channel-outbound`（9.4+ 均在）|
+| 2 | `plugin-sdk/command-auth` | 子路径移除 | 新垫片：10.x 用存活原语**按原语义重建**旧组合器；≤9.x 透传 |
+| 3 | `plugin-sdk/session-store-runtime` 的 `loadSessionStore` / `resolveSessionStoreEntry` | **具名导出移除** | 新垫片：改用 9.4 起即有的 `getSessionEntry`；≤9.x 回落旧全量存储对 |
+
+> ⚠️ **第 3 类是新的破坏形态**：子路径仍在，故 `package.json#exports` 比对显示「正常」；但具名导出已删，import 阶段直接 `SyntaxError: does not provide an export named`——**发生在模块实例化期，调用点的 `try/catch` 完全救不了**。9.4 的 d.ts 早已标注这是限时兼容桥（"Keep the compatibility projection through 2026-10-12"），10.3 如期移除。**后续做宿主升级评估时，必须逐符号核对值导入，不能只比子路径。**
+
+适配覆盖度已用**全量值符号扫描**验证：插件 19 个子路径 / 25 个值导入符号在 10.3 中全部存在。
+
+## 📊 兼容性矩阵（最终态）
 
 ## 📊 兼容性矩阵（最终态）
 
@@ -23,6 +46,7 @@
 | 2026.7.1 | ✅ | ✅ | ✅ | 与 8.1 契约形状无漂移 |
 | 2026.8.1+ | ✅ | ✅ | ✅ | 裸 `./plugin-sdk` 移除（内置插件不受影响）|
 | **2026.9.4** | ✅ | ✅ | ✅ **推荐** | Docker + 飞牛 fnOS 真机 E2E 全链路 |
+| **2026.10.3** | ❌ | ❌ 缺 `channel-message`/`command-auth` 等 | ✅ **已适配**（加载级验证通过）| 子路径移除 + 具名导出移除，3.1.0 三垫片覆盖；**真机 E2E 待跑** |
 
 ## 🔬 测试方法
 

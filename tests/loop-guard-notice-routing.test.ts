@@ -74,7 +74,7 @@ vi.mock('openclaw/plugin-sdk/reply-history', () => ({
   DEFAULT_GROUP_HISTORY_LIMIT: 20,
   recordPendingHistoryEntryIfEnabled: vi.fn(),
 }));
-vi.mock('openclaw/plugin-sdk/command-auth', () => ({
+vi.mock('../src/core/command-auth-compat', () => ({
   resolveSenderCommandAuthorization: vi.fn().mockResolvedValue({ commandAuthorized: false }),
 }));
 vi.mock('openclaw/plugin-sdk/allow-from', () => ({ isNormalizedSenderAllowed: vi.fn().mockReturnValue(false) }));

@@ -11,7 +11,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 // Module mocks
 // ---------------------------------------------------------------------------
 
-vi.mock('openclaw/plugin-sdk/channel-message', () => ({
+vi.mock('../src/core/channel-message-compat', () => ({
   createReplyPrefixContext: () => ({
     responsePrefix: '',
     responsePrefixContextProvider: () => null,

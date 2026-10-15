@@ -1,6 +1,6 @@
 {
   "name": "claw-fry-cards",
-  "version": "3.0.1",
+  "version": "3.1.0",
   "description": "🍤 claw-fry-cards 2.0 — OpenClaw 飞书通道插件（fry 卡片引擎内置 · 派发即建卡 · 打字机 · 统一指标面板）",
   "repository": {
     "type": "git",
@@ -70,7 +70,7 @@
     "fs-extra": "^11.3.2",
     "globals": "^16.2.0",
     "minimist": "^1.2.8",
-    "openclaw": "^2026.8.1",
+    "openclaw": "^2026.10.3",
     "prettier": "3.8.1",
     "tsdown": "^0.21.4",
     "typescript": "^5.9.3",
