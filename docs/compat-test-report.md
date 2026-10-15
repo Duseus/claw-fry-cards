@@ -10,7 +10,7 @@
 |---|---|
 | 兼容下限（无垫片，≤2.0.4）| OpenClaw **2026.5.12**（远低于官方插件时代的 2026.2.26 口径）|
 | 兼容下限（2.0.5+ 垫片）| OpenClaw **2026.5.4** |
-| 推荐宿主 | **2026.9.4**（飞书 websocket 全链路真机 E2E 验证版本）；**2026.10.3 已适配**（真实 Docker 网关实测：插件加载 enabled + 垫片命中 + 鉴权逻辑等价，飞书 websocket 全链路待跑，见下）|
+| 推荐宿主 | **2026.10.3**（真实生产容器 + 真实飞书凭据全链路 E2E 验证）；**2026.9.4** 亦受支持 |
 | 断崖方向 | 裸导出 `./plugin-sdk` 在 2026.8.1 移除——新宿主跑不了旧插件（官方 openclaw-lark 失效原因），反向无此问题 |
 
 ## 🔻 2026.10.3 断崖与本插件适配（3.1.0）
@@ -46,7 +46,7 @@
 | 2026.7.1 | ✅ | ✅ | ✅ | 与 8.1 契约形状无漂移 |
 | 2026.8.1+ | ✅ | ✅ | ✅ | 裸 `./plugin-sdk` 移除（内置插件不受影响）|
 | **2026.9.4** | ✅ | ✅ | ✅ **推荐** | Docker + 飞牛 fnOS 真机 E2E 全链路 |
-| **2026.10.3** | ❌ | ❌ 缺 `channel-message`/`command-auth` 等 | ✅ **已适配**（真实 Docker 网关实测通过）| 子路径移除 + 具名导出移除，3.1.0 三垫片覆盖；网关加载 enabled、垫片分支与鉴权等价性均已实测；**飞书 websocket 全链路待跑** |
+| **2026.10.3** | ❌ | ❌ 缺 `channel-message`/`command-auth` 等 | ✅ **推荐** | 子路径移除 + 具名导出移除，3.1.0 三垫片覆盖；**真实生产容器 + 真实飞书凭据全链路 E2E 通过**（见下）|
 
 ## 🔬 测试方法
 
@@ -61,20 +61,40 @@
 
 **沙箱盲区（实证）**：插件兼容垫片首版使用顶层 await（TLA），沙箱（native import）全部通过，真实网关加载器直接 SyntaxError——**模块解析验证不能替代网关加载器语义，发版前必须过真实网关**（已改为 createRequire 同步解析）。
 
-### 10.3 真实网关实测（3.1.0）
+### 10.3 生产容器全链路实测（3.1.0，2026-10-15）
 
-`ghcr.io/openclaw/openclaw:2026.10.3` 起真实网关实例 + 装入 3.1.0 产物，在 10.3 宿主上实测：
+**环境**：`ghcr.io/openclaw/openclaw:2026.10.3` 真实容器，挂载原有 state 卷（真实飞书凭据 + 真实群），插件 3.1.0（npm 安装）。宿主由 2026.9.4 就地升级至 2026.10.3。
 
 | 检查项 | 结果 |
 |---|---|
-| 插件加载 | ✅ `claw-fry-cards 3.1.0` 在 15 个插件中加载为 `enabled`，无加载错误 |
-| 网关健康 | ✅ `Up (healthy)`，`/health` 返回 `{"ok":true,"status":"live"}` |
-| channel-message 垫片分支 | ✅ 命中 `channel-outbound`（首选层）|
-| command-auth 垫片分支 | ✅ 旧门面 `ERR_PACKAGE_PATH_NOT_EXPORTED` → 走重建路径；4 个原语均为 function |
-| session-store 垫片分支 | ✅ 命中 `getSessionEntry`（新路径，非旧全量存储）|
+| 宿主版本 | ✅ `OpenClaw 2026.10.3 (59cb447)` |
+| 插件加载 | ✅ `claw-fry-cards 3.1.0` `enabled`，无加载错误 |
+| 网关健康 | ✅ `Up (healthy)`，`/health` → `{"ok":true,"status":"live"}` |
+| **飞书 websocket** | ✅ bot identity 解析成功，`client ready` + `ws client ready` |
+| **入站消息** | ✅ 多群真实消息持续到达并被处理 |
+| **出站回复** | ✅ `dispatch complete (queuedFinal=true, replies=1)` —— 真实消息走完「收→gate→agent→模型→回复」全链路 |
+| **卡片引擎** | ✅ `progressCard.get` 调用成功（180ms）|
+| channel-message 垫片 | ✅ 命中 `channel-outbound`（10.x 首选层）|
+| command-auth 垫片 | ✅ 旧门面 `ERR_PACKAGE_PATH_NOT_EXPORTED` → 走重建路径；原语齐全 |
+| session-store 垫片 | ✅ `getSessionEntry` 存在、`loadSessionStore`/`resolveSessionStoreEntry` 缺失 → 命中新路径 |
 | 鉴权逻辑等价性 | ✅ 重建路径 vs 9.4 原实现：4 种用例（群/私聊 × 名单内/陌生人）结果**完全一致** |
+| 配置保留 | ✅ `streaming.mode=partial`、panel 字段、飞书凭据均无损 |
 
-> ⚠️ 此实测覆盖「插件能否在 10.3 加载 + 垫片是否命中正确分支 + 鉴权语义是否等价」；**未覆盖飞书 websocket 收发全链路**（测试容器无真实飞书凭据）。
+**这是 10.x 分支代码首次在真实生产容器（真实飞书凭据）上运行并通过全链路验证。**
+
+#### ⚠️ 升级到 10.x 的必查项：官方 feishu 插件抢占通道
+
+宿主 2026.10.3 启动时会**自动安装并启用官方 `@openclaw/feishu` 通道插件**，与本插件抢占同一 `feishu` 通道：
+
+```
+[plugins] channel already registered: feishu (claw-fry-cards)
+  source=.../node_modules/@openclaw/feishu/dist/index.js
+```
+
+- 实测对比：升级前 `plugins.entries` 仅 `['claw-fry-cards']`；升级后宿主自动写入 `'feishu'` 并置 `enabled`
+- 本插件因先注册而保住通道，但官方插件仍 enabled 且尝试另起 websocket，状态混乱
+- **修复**：`openclaw plugins disable feishu` → `plugins.entries.feishu = {"enabled":false}`，重启后冲突消失
+- 这与本插件代码无关，属宿主自动启用行为；**每次宿主大版本升级后都需复查 `plugins.entries` 是否多出 `feishu`**
 
 ## 🎯 下限定位过程（2026.5.12 的由来）
 

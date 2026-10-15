@@ -160,7 +160,7 @@ if (maProps?.additionalProperties && typeof maProps.additionalProperties === 'ob
 const plugin = {
   id: 'claw-fry-cards',
   name: '飞书 虾条卡片',
-  description: '飞书/Lark 通道插件——消息收发 + 38 项工具 + fry 虾条流式卡片（派发即建卡 · 打字机 · 统一指标面板）',
+  description: '飞书/Lark 通道插件——消息收发 + 39 项工具 + fry 虾条流式卡片（派发即建卡 · 打字机 · 统一指标面板）',
   configSchema: pluginConfigSchema,
   register(api: OpenClawPluginApi): void {
     LarkClient.setRuntime(api.runtime);

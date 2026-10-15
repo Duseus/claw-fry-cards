@@ -10,8 +10,8 @@
 - 🧪 **修正测试 mock 目标**：`vi.mock` 目标从已移除的宿主子路径改为对应垫片模块（`createRequire` 本就绕过 `vi.mock`，旧 mock 早已是惰性伪装）
 - 📦 devDependency `openclaw` 由 `^2026.8.1` 升至 `^2026.10.3`，typecheck / 单测改在真实 10.3 宿主类型下验证
 - ⬇️ peer 下限**维持 `>=2026.5.4`**：三代回落垫片保留老路径，不牺牲既有下限
-- ✅ **验证**：`docs/compat-test-harness.mjs` 在 **2026.9.4** 与 **2026.10.3** 两个真实宿主依赖树上均 `RESULT: PASS`（import + register 全通过，API 面一致）；**真实 2026.10.3 Docker 网关实测**（`ghcr.io/openclaw/openclaw:2026.10.3`）——插件在 15 个插件中加载为 `enabled`，网关 `healthy`、`/health` 正常、日志无加载错误；三个垫片在真实宿主上均命中预期分支（channel-outbound / 重建路径 / getSessionEntry）；重建的鉴权逻辑与 9.4 原实现**四种用例结果完全一致**；482 项单测、typecheck、lint(0 error) 全绿
-- ⚠️ **飞书 websocket 全链路未跑**：实测容器无真实飞书凭据，故运行级收发（长连接、卡片流转）仍未验证
+- ✅ **验证**：`docs/compat-test-harness.mjs` 在 **2026.9.4** 与 **2026.10.3** 两个真实宿主依赖树上均 `RESULT: PASS`（import + register 全通过，API 面一致）；**真实 2026.10.3 生产容器 + 真实飞书凭据全链路实测**——宿主由 9.4 就地升级至 10.3，插件加载 `enabled`、网关 `healthy`、飞书 websocket `client ready`、真实群消息走完「收→gate→agent→模型→回复」全链路（`dispatch complete (queuedFinal=true, replies=1)`）、卡片引擎 `progressCard.get` 调用成功；三垫片在真实宿主上均命中 10.x 分支（channel-outbound / 重建路径 / getSessionEntry）；重建鉴权逻辑与 9.4 原实现**四种用例结果完全一致**；482 项单测、typecheck、lint(0 error) 全绿
+- ⚠️ **升级到 10.x 的必查项**：宿主 2026.10.3 会自动安装并启用官方 `@openclaw/feishu` 通道插件，与本插件抢占 `feishu` 通道（实测日志 `channel already registered: feishu (claw-fry-cards)`）。修复：`openclaw plugins disable feishu`。此与插件代码无关，属宿主自动启用行为，每次宿主大版本升级后都需复查
 
 ## 3.0.1 (2026-09-29)
 
