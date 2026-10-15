@@ -4,7 +4,7 @@
 
 适配 **OpenClaw 2026.10.x** 大版本（宿主在 10.3 移除了三个本插件依赖的 SDK 导出，旧版插件会**加载失败、整条飞书通道消失**）。
 
-> 起因：用户 `koler` 于 2026-10-13 反馈宿主升到 2026.10.2 后插件失效（[#1](https://github.com/techysy/claw-fry-cards/issues/1)）。感谢反馈 🙏
+> 起因：用户 koler（[Bilibili @koler](https://space.bilibili.com/567523)）于 2026-10-13 反馈宿主升到 2026.10.2 后插件失效（[#1](https://github.com/techysy/claw-fry-cards/issues/1)）。感谢反馈 🙏
 
 - 🔌 **`channel-outbound` 改为 channel-message 垫片首选路径**：`createReplyPrefixContext` / `createTypingCallbacks` 在 10.3 由 `plugin-sdk/channel-message` 迁走（该子路径已移除）。垫片改按 `channel-outbound` → `channel-message` → `channel-runtime` 三代回落——`channel-outbound` 在 9.4 与 10.3 均存在，故向前不回溯
 - 🔐 **新增 `core/command-auth-compat` 垫片**：`plugin-sdk/command-auth` 聚合门面在 10.3 被整体移除（其导出在 9.4 已标 `@deprecated`）。官方替代 `resolveChannelMessageIngress` 入参是约 20 个结构化字段、出参与既有调用点形状不兼容，故垫片改为**用 10.3 中仍存活的保留原语按原语义重建**同一组合器（`resolveDmGroupAccessWithLists` / `resolveCommandAuthorizedFromAuthorizers` / `shouldComputeCommandAuthorized` / `expandAllowFromWithAccessGroups`），老宿主（≤9.x）直接透传原实现——逐行等价，零行为漂移

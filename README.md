@@ -309,9 +309,9 @@ npm run typecheck
 
 感谢每一个把问题递回来的使用者 —— 反馈是这些适配能发生的前提。
 
-- **`koler`** —— 2026-10-13 反馈宿主升级到 OpenClaw 2026.10.2 后插件因依赖不兼容而失效（[#1](https://github.com/techysy/claw-fry-cards/issues/1)）。**3.1.0 的 2026.10.x 适配即由此而起**：三个 SDK 兼容垫片、`channel-outbound` 路径迁移、`getSessionEntry` 迁移、真实 10.3 全链路实测，均源于这条反馈。
+- **koler**（[Bilibili @koler](https://space.bilibili.com/567523)）—— 2026-10-13 反馈宿主升级到 OpenClaw 2026.10.2 后插件因依赖不兼容而失效（[#1](https://github.com/techysy/claw-fry-cards/issues/1)）。**3.1.0 的 2026.10.x 适配即由此而起**：三个 SDK 兼容垫片、`channel-outbound` 路径迁移、`getSessionEntry` 迁移、真实 10.3 全链路实测，均源于这条反馈。
 
-（若你希望以 GitHub 账号具名致谢或改用其他署名方式，欢迎在 [#1](https://github.com/techysy/claw-fry-cards/issues/1) 告知。）
+（若希望改用其他署名方式或补充链接，欢迎在 [#1](https://github.com/techysy/claw-fry-cards/issues/1) 告知。）
 
 ## 📄 许可证
 
