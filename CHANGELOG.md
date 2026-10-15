@@ -10,8 +10,8 @@
 - 🧪 **修正测试 mock 目标**：`vi.mock` 目标从已移除的宿主子路径改为对应垫片模块（`createRequire` 本就绕过 `vi.mock`，旧 mock 早已是惰性伪装）
 - 📦 devDependency `openclaw` 由 `^2026.8.1` 升至 `^2026.10.3`，typecheck / 单测改在真实 10.3 宿主类型下验证
 - ⬇️ peer 下限**维持 `>=2026.5.4`**：三代回落垫片保留老路径，不牺牲既有下限
-- ✅ **验证**：`docs/compat-test-harness.mjs` 在 **2026.9.4** 与 **2026.10.3** 两个真实宿主依赖树上均 `RESULT: PASS`（import + register 全通过，API 面一致）；482 项单测、typecheck、lint（0 error）全绿
-- ⚠️ **真机 E2E 未跑**：按 `docs/compat-test-report.md` 既有结论「模块解析验证不能替代网关加载器语义」，发版前仍需在 10.x 宿主的 Docker/真机上验证飞书 websocket 全链路
+- ✅ **验证**：`docs/compat-test-harness.mjs` 在 **2026.9.4** 与 **2026.10.3** 两个真实宿主依赖树上均 `RESULT: PASS`（import + register 全通过，API 面一致）；**真实 2026.10.3 Docker 网关实测**（`ghcr.io/openclaw/openclaw:2026.10.3`）——插件在 15 个插件中加载为 `enabled`，网关 `healthy`、`/health` 正常、日志无加载错误；三个垫片在真实宿主上均命中预期分支（channel-outbound / 重建路径 / getSessionEntry）；重建的鉴权逻辑与 9.4 原实现**四种用例结果完全一致**；482 项单测、typecheck、lint(0 error) 全绿
+- ⚠️ **飞书 websocket 全链路未跑**：实测容器无真实飞书凭据，故运行级收发（长连接、卡片流转）仍未验证
 
 ## 3.0.1 (2026-09-29)
 
