@@ -1,3 +1,4 @@
+import { buildHermesHeader, getHermesWeather, getHermesHitokoto, formatElapsedHermes, compactHermesNumber } from './hermes-footer';
 /**
  * Copyright (c) 2026 ByteDance Ltd. and/or its affiliates
  * SPDX-License-Identifier: MIT
@@ -487,6 +488,7 @@ export function buildCardContent(
   state: CardState,
   data: {
     panel?: {
+      hermesCardStyle?: boolean;
       unifiedPanelMinDurationMs?: number;
       modelAliases?: Record<string, ModelAliasEntry>;
       modelAliasesEnabled?: boolean;
@@ -613,6 +615,7 @@ function buildStreamingCard(
   }
 
   return {
+    header: buildHermesHeader({ status: 'streaming' }),
     config: { wide_screen_mode: true, update_multi: true, locales: ['zh_cn', 'en_us'] },
     elements,
   };
@@ -645,6 +648,7 @@ const PANEL_FIELD_SET: ReadonlySet<string> = new Set<string>(PANEL_FIELD_POOL);
 function buildCompleteCard(params: {
   text: string;
   panel?: {
+    hermesCardStyle?: boolean;
     unifiedPanelMinDurationMs?: number;
     contextDisplayMode?: ContextDisplayMode;
     expanded?: boolean;
@@ -682,6 +686,7 @@ function buildCompleteCard(params: {
     reasoningText,
     reasoningElapsedMs,
     toolUseSteps,
+    toolUseElapsedMs,
     showToolUse = true,
     isAborted,
     footer,
@@ -798,14 +803,27 @@ function buildCompleteCard(params: {
       children.push(buildToolUsePlaceholder({ zh: '暂无思考与工具调用过程', en: 'No reasoning or tool activity' }));
     }
 
+    const isHermesStyle = Boolean(panel?.hermesCardStyle);
+    let titleContentZh = parts.join(' · ');
+    let titleContentEn = parts.join(' · ');
+    if (isHermesStyle) {
+      const roundsCount = hasReasoning ? 1 : 0;
+      const toolElapsed = toolUseElapsedMs || 0;
+      const toolSec = toolElapsed / 1000;
+      const toolElapsedStr = toolSec < 60 ? `${toolSec.toFixed(1)} 秒` : `${Math.floor(toolSec / 60)} 分 ${Math.round(toolSec % 60)} 秒`;
+      const toolElapsedStrEn = toolSec < 60 ? `${toolSec.toFixed(1)}s` : `${Math.floor(toolSec / 60)}m ${Math.round(toolSec % 60)}s`;
+      titleContentZh = `🧠 ${roundsCount} 轮 · 🛠️ ${toolCount} 个工具 · ⏳ ${toolElapsedStr}`;
+      titleContentEn = `🧠 ${roundsCount} round${roundsCount === 1 ? '' : 's'} · 🛠️ ${toolCount} tool${toolCount === 1 ? '' : 's'} · ⏳ ${toolElapsedStrEn}`;
+    }
+
     elements.push({
       tag: 'collapsible_panel',
       expanded: panelExpanded,
       header: {
         title: {
           tag: 'plain_text',
-          content: parts.join(' · '),
-          i18n_content: { zh_cn: parts.join(' · '), en_us: parts.join(' · ') },
+          content: titleContentZh,
+          i18n_content: { zh_cn: titleContentZh, en_us: titleContentEn },
         },
         vertical_align: 'center',
         icon: {
@@ -824,36 +842,91 @@ function buildCompleteCard(params: {
     });
   }
 
-  // 官方 footer 行（channels.feishu.footer.* 开启时渲染；与统一面板共存，默认全关）
-  const fp = formatFooterRuntimeSegments({
-    footer,
-    metrics: footerMetrics,
-    elapsedMs,
-    isError,
-    isAborted,
-  });
-  const footerZhLines: string[] = [];
-  const footerEnLines: string[] = [];
-  if (fp.primaryZh.length > 0) {
-    footerZhLines.push(fp.primaryZh.join(' · '));
-    footerEnLines.push(fp.primaryEn.join(' · '));
-  }
-  if (fp.detailZh.length > 0) {
-    footerZhLines.push(fp.detailZh.join(' · '));
-    footerEnLines.push(fp.detailEn.join(' · '));
-  }
-  if (footerZhLines.length > 0) {
-    elements.push(
-      ...buildFooter(footerZhLines.join(String.fromCharCode(10)), footerEnLines.join(String.fromCharCode(10)), isError),
-    );
+  const isHermesStyle = Boolean(panel?.hermesCardStyle);
+  if (isHermesStyle) {
+    const hermesFooterLines: string[] = [];
+    const statusText = isError ? '❌ 出错' : isAborted ? '⏹ 已停止' : '✅ 已完成';
+    const hermesElapsed = formatElapsedHermes(elapsedMs || 0);
+
+    const rawM = (footerMetrics?.model ?? '').trim();
+    const cleanM = rawM.includes('/') ? rawM.split('/').pop()! : rawM;
+    const modelSeg = cleanM ? `⚕${cleanM}` : '⚕openclaw';
+
+    const inT = footerMetrics?.inputTokens || 0;
+    const outT = footerMetrics?.outputTokens || footerMetrics?.outputTokensTotal || 0;
+    const rT = (footerMetrics as any)?.reasoningTokens || 0;
+    let tokensSeg = '';
+    if (inT > 0 || outT > 0) {
+      tokensSeg = `输入 ${compactHermesNumber(inT)} 输出 ${compactHermesNumber(outT)}`;
+      if (rT > 0) tokensSeg += ` 思考 ${compactHermesNumber(rT)}`;
+    }
+
+    const ctxUsed = inT || footerMetrics?.totalTokens || 0;
+    const ctxMax = footerMetrics?.contextTokens || (cleanM.includes('gemini') ? 1048576 : 131072);
+    let ctxSeg = '';
+    if (ctxUsed > 0 && ctxMax > 0) {
+      const pct = Math.round((ctxUsed / ctxMax) * 100);
+      ctxSeg = `${compactHermesNumber(ctxUsed)}/${compactHermesNumber(ctxMax)} (${pct}%)`;
+    }
+
+    const line1Parts = [statusText, hermesElapsed, modelSeg];
+    if (tokensSeg) line1Parts.push(tokensSeg);
+    if (ctxSeg) line1Parts.push(ctxSeg);
+    hermesFooterLines.push(line1Parts.join(' · '));
+
+    // Line 2: 天气
+    const weatherText = getHermesWeather();
+    if (weatherText) hermesFooterLines.push(weatherText);
+
+    // Line 3: 一言
+    const hitokotoText = getHermesHitokoto();
+    if (hitokotoText) hermesFooterLines.push(hitokotoText);
+
+    const fullFooterMarkdown = hermesFooterLines.join('\n\n');
+    elements.push({ tag: 'hr' });
+    elements.push({
+      tag: 'markdown',
+      content: isError ? `<font color='red'>${fullFooterMarkdown}</font>` : fullFooterMarkdown,
+      i18n_content: {
+        zh_cn: isError ? `<font color='red'>${fullFooterMarkdown}</font>` : fullFooterMarkdown,
+        en_us: isError ? `<font color='red'>${fullFooterMarkdown}</font>` : fullFooterMarkdown,
+      },
+      text_size: 'notation',
+    });
+  } else {
+    // 官方 footer 行（channels.feishu.footer.* 开启时渲染；与统一面板共存，默认全关）
+    const fp = formatFooterRuntimeSegments({
+      footer,
+      metrics: footerMetrics,
+      elapsedMs,
+      isError,
+      isAborted,
+    });
+    const footerZhLines: string[] = [];
+    const footerEnLines: string[] = [];
+    if (fp.primaryZh.length > 0) {
+      footerZhLines.push(fp.primaryZh.join(' · '));
+      footerEnLines.push(fp.primaryEn.join(' · '));
+    }
+    if (fp.detailZh.length > 0) {
+      footerZhLines.push(fp.detailZh.join(' · '));
+      footerEnLines.push(fp.detailEn.join(' · '));
+    }
+    if (footerZhLines.length > 0) {
+      elements.push(
+        ...buildFooter(footerZhLines.join(String.fromCharCode(10)), footerEnLines.join(String.fromCharCode(10)), isError),
+      );
+    }
   }
 
   // Use the answer text as the feed preview summary.
   // Strip markdown syntax so the preview reads as plain text.
   const summaryText = text.replace(/[*_`#>[\]()~]/g, '').trim();
   const summary = summaryText ? { content: summaryText.slice(0, 120) } : undefined;
+  const completeStatus = isError ? 'error' : isAborted ? 'stopped' : 'completed';
 
   return {
+    header: buildHermesHeader({ status: completeStatus }),
     config: { wide_screen_mode: true, update_multi: true, locales: ['zh_cn', 'en_us'], summary },
     elements,
   };
@@ -995,6 +1068,7 @@ export function buildStreamingPreAnswerCard(params: {
 
   return {
     schema: '2.0',
+    header: buildHermesHeader({ status: 'streaming' }),
     config: {
       streaming_mode: true,
       locales: ['zh_cn', 'en_us'],

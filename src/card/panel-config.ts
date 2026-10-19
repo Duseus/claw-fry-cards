@@ -15,6 +15,7 @@
 import type { ModelAliasEntry, PanelField } from './builder';
 
 export interface UnifiedPanelSettings {
+  hermesCardStyle?: boolean;
   unifiedPanelMinDurationMs?: number;
   contextDisplayMode?: 'text' | 'bar' | 'text_bar';
   expanded?: boolean;
@@ -106,6 +107,9 @@ function readPanelSettings(raw: unknown): UnifiedPanelSettings | undefined {
     fields?: unknown;
   };
   const out: UnifiedPanelSettings = {};
+  if (typeof (p as any).hermesCardStyle === 'boolean') {
+    out.hermesCardStyle = (p as any).hermesCardStyle;
+  }
   if (typeof p.unifiedPanelMinDuration === 'number') {
     out.unifiedPanelMinDurationMs = p.unifiedPanelMinDuration * 1000;
   }
