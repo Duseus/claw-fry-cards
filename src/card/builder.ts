@@ -26,6 +26,12 @@ import { EMPTY_TOOL_USE_PLACEHOLDER, type ToolUseDisplayStep } from './tool-use-
 export const STREAMING_ELEMENT_ID = 'streaming_content';
 export const REASONING_ELEMENT_ID = 'reasoning_content';
 const TOOL_USE_STEP_CONTENT_INDENT = '0px 0px 0px 22px';
+/** Unified vertical spacing between stacked card elements (px). */
+const CARD_PANEL_VERTICAL_SPACING = '4px';
+/** Unified inner padding for collapsible tool-use panels. */
+const CARD_PANEL_PADDING = '8px 8px 8px 8px';
+/** Zero margin used to suppress Flark default markdown gaps in streaming area. */
+const CARD_MARKDOWN_FLUSH_MARGIN = '0px 0px 0px 0px';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -836,8 +842,8 @@ function buildCompleteCard(params: {
         icon_expanded_angle: -180,
       },
       border: { color: borderColor, corner_radius: '5px' },
-      vertical_spacing: '4px',
-      padding: '8px 8px 8px 8px',
+      vertical_spacing: CARD_PANEL_VERTICAL_SPACING,
+      padding: CARD_PANEL_PADDING,
       elements: children,
     });
   }
@@ -1051,13 +1057,16 @@ export function buildStreamingPreAnswerCard(params: {
     content: '',
     text_align: 'left',
     text_size: 'normal_v2',
-    margin: '0px 0px 0px 0px',
+    margin: CARD_MARKDOWN_FLUSH_MARGIN,
     element_id: STREAMING_ELEMENT_ID,
   });
 
   elements.push({
     tag: 'markdown',
     content: ' ',
+    text_align: 'left',
+    text_size: 'normal_v2',
+    margin: CARD_MARKDOWN_FLUSH_MARGIN,
     icon: {
       tag: 'custom_icon',
       img_key: 'img_v3_02vb_496bec09-4b43-4773-ad6b-0cdd103cd2bg',
@@ -1126,8 +1135,8 @@ function buildStreamingToolUseActivePanel(params: { steps: ToolUseDisplayStep[];
       icon_expanded_angle: -180,
     },
     border: { color: 'grey', corner_radius: '5px' },
-    vertical_spacing: '4px',
-    padding: '8px 8px 8px 8px',
+    vertical_spacing: CARD_PANEL_VERTICAL_SPACING,
+    padding: CARD_PANEL_PADDING,
     elements: steps.flatMap((step) => buildToolUseStepElements(step)),
   };
 }
@@ -1168,8 +1177,8 @@ function buildStreamingToolUsePendingPanel(): CardElement {
       icon_expanded_angle: -180,
     },
     border: { color: 'grey', corner_radius: '5px' },
-    vertical_spacing: '4px',
-    padding: '8px 8px 8px 8px',
+    vertical_spacing: CARD_PANEL_VERTICAL_SPACING,
+    padding: CARD_PANEL_PADDING,
     elements: [],
   };
 }
@@ -1218,8 +1227,8 @@ function buildToolUsePanel(params: {
       icon_expanded_angle: -180,
     },
     border: { color: 'grey', corner_radius: '5px' },
-    vertical_spacing: '4px',
-    padding: '8px 8px 8px 8px',
+    vertical_spacing: CARD_PANEL_VERTICAL_SPACING,
+    padding: CARD_PANEL_PADDING,
     elements: stepElements,
   };
 }
