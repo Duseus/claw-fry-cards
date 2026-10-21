@@ -435,12 +435,18 @@ export function createFeishuReplyDispatcher(params: CreateFeishuReplyDispatcherP
         ? {
             onReasoningStream: (payload: ReplyPayload) => controller.onReasoningStream(payload),
             onPartialReply: (payload: ReplyPayload) => controller.onPartialReply(payload),
-            onToolStart: (payload: { name?: string; phase?: string; args?: Record<string, unknown> }) => {
+            onToolStart: (payload: {
+              name?: string;
+              phase?: string;
+              args?: Record<string, unknown>;
+              toolCallId?: string;
+            }) => {
               if (payload.phase === undefined || payload.phase === 'start') {
                 recordToolUseStart({
                   sessionKey,
                   toolName: payload.name ?? 'tool',
                   toolParams: payload.args,
+                  toolCallId: payload.toolCallId,
                 });
               }
               return controller.onToolStart(payload);
@@ -453,12 +459,12 @@ export function createFeishuReplyDispatcher(params: CreateFeishuReplyDispatcherP
               toolCallId?: string;
               hideFromChannelProgress?: boolean;
             }) => {
-              if (payload.hideFromChannelProgress === true) return;
               if (payload.phase !== 'end') return;
               const isError = payload.status === 'error' || payload.status === 'failed';
               recordToolUseEnd({
                 sessionKey,
-                toolName: payload.name ?? 'tool',
+                toolName: payload.name ?? '',
+                toolCallId: payload.toolCallId,
                 error: isError ? payload.summary || 'failed' : undefined,
               });
               return controller.onToolEnd();

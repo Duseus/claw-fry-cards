@@ -114,7 +114,8 @@ export function recordToolUseEnd(params: {
   durationMs?: number;
 }): void {
   const { sessionKey, toolName, toolParams, toolCallId, runId, result, error, durationMs } = params;
-  if (!sessionKey || !toolName) return;
+  if (!sessionKey) return;
+  if (!toolName && !toolCallId) return;
 
   const state = sessionTraces.get(sessionKey);
   if (!state) return;
@@ -193,7 +194,17 @@ function findPendingStepIndex(
     }
   }
 
-  const normalizedToolName = normalizeToolName(toolName);
+  // End events may omit the tool name entirely; fall back to the most
+  // recent running step so status never gets stuck on "running".
+  const normalizedToolName = toolName ? normalizeToolName(toolName) : '';
+  if (!normalizedToolName) {
+    for (let index = steps.length - 1; index >= 0; index -= 1) {
+      const step = steps[index];
+      if (step && step.status === 'running') return index;
+    }
+    return -1;
+  }
+
   const paramsKey = fingerprintTraceValue(params);
 
   for (let index = steps.length - 1; index >= 0; index -= 1) {
