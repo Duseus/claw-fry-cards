@@ -135,7 +135,7 @@ export function recordToolUseEnd(params: {
     step.status = error ? 'error' : 'success';
     step.result = sanitizeTraceValue(result, 0, { source: 'result' });
     step.error = error ? truncateText(error, 160) : undefined;
-    step.durationMs = durationMs;
+    step.durationMs = durationMs ?? Math.max(0, now - step.startedAt);
     step.finishedAt = now;
     if (!step.params && sanitizedParams) {
       step.params = sanitizedParams;

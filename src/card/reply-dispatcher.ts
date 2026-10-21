@@ -27,6 +27,7 @@ import type { CreateFeishuReplyDispatcherParams, FeishuReplyDispatcherResult } f
 import { expandAutoMode, resolveReplyMode, shouldUseCard } from './reply-mode';
 import { StreamingCardController } from './streaming-card-controller';
 import { UnavailableGuard } from './unavailable-guard';
+import { recordToolUseEnd, recordToolUseStart } from './tool-use-trace-store';
 
 const log = larkLogger('card/reply-dispatcher');
 
@@ -423,6 +424,7 @@ export function createFeishuReplyDispatcher(params: CreateFeishuReplyDispatcherP
         ? {
             shouldEmitToolResult: () => false,
             shouldEmitToolOutput: () => false,
+            allowToolLifecycleWhenProgressHidden: true,
           }
         : {}),
       onModelSelected: (ctx: { provider: string; model: string; thinkLevel: string | undefined }) => {
@@ -433,7 +435,34 @@ export function createFeishuReplyDispatcher(params: CreateFeishuReplyDispatcherP
         ? {
             onReasoningStream: (payload: ReplyPayload) => controller.onReasoningStream(payload),
             onPartialReply: (payload: ReplyPayload) => controller.onPartialReply(payload),
-            onToolStart: (payload: { name?: string; phase?: string }) => controller.onToolStart(payload),
+            onToolStart: (payload: { name?: string; phase?: string; args?: Record<string, unknown> }) => {
+              if (payload.phase === undefined || payload.phase === 'start') {
+                recordToolUseStart({
+                  sessionKey,
+                  toolName: payload.name ?? 'tool',
+                  toolParams: payload.args,
+                });
+              }
+              return controller.onToolStart(payload);
+            },
+            onItemEvent: (payload: {
+              name?: string;
+              phase?: string;
+              status?: string;
+              summary?: string;
+              toolCallId?: string;
+              hideFromChannelProgress?: boolean;
+            }) => {
+              if (payload.hideFromChannelProgress === true) return;
+              if (payload.phase !== 'end') return;
+              const isError = payload.status === 'error' || payload.status === 'failed';
+              recordToolUseEnd({
+                sessionKey,
+                toolName: payload.name ?? 'tool',
+                error: isError ? payload.summary || 'failed' : undefined,
+              });
+              return controller.onToolEnd();
+            },
           }
         : {}),
     },

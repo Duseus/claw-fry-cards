@@ -555,6 +555,22 @@ export class StreamingCardController {
     await this.throttledCardUpdate();
   }
 
+  /** Tool finished (end item event) — refresh the pre-answer panel immediately. */
+  async onToolEnd(): Promise<void> {
+    if (!this.shouldProceed('onToolEnd')) return;
+    if (!this.shouldDisplayToolUse) return;
+
+    this.markToolUseActivity();
+
+    if (!this.cardKit.cardMessageId) return;
+    if (!this.text.accumulatedText && this.cardKit.cardKitCardId) {
+      this.lastToolUseStatusUpdateTime = 0;
+      await this.throttledToolUseStatusUpdate();
+      return;
+    }
+    await this.throttledCardUpdate();
+  }
+
   async onPartialReply(payload: ReplyPayload): Promise<void> {
     if (!this.shouldProceed('onPartialReply')) return;
 
