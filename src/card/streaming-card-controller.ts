@@ -34,6 +34,7 @@ import {
 } from './builder';
 import {
   FEISHU_CARD_TABLE_LIMIT,
+  isCardElementLimitError,
   isCardRateLimitError,
   isCardTableLimitError,
   sanitizeTextSegmentsForCard,
@@ -1107,6 +1108,18 @@ export class StreamingCardController {
         return;
       }
 
+      // 卡片元素数超限（300305 element exceeds the limit）— 卡片已不可再更新：
+      // 所有后续 card.update / cardElement.content 都会被拒（2026-10-21 生产日志实测），
+      // 表现为工具行永远 Running。立即禁用 CardKit 流式回落 im.message.patch，
+      // 后续内容仍能到达用户，完成态由 onIdle 走 im.message.patch 重建整卡。
+      if (isCardElementLimitError(err)) {
+        log.warn('flushCardUpdate: card element limit exceeded (300305), disabling CardKit streaming', {
+          seq: this.cardKit.cardKitSequence,
+        });
+        this.cardKit.cardKitCardId = null;
+        return;
+      }
+
       const apiDetail = extractApiDetail(err);
       log.error('card stream update failed', {
         apiCode,
@@ -1164,6 +1177,13 @@ export class StreamingCardController {
         accountId: this.deps.accountId,
       });
     } catch (err) {
+      // 300305：流式预答卡同样可能撞元素上限（步骤多 + 整卡重发），
+      // 此卡已不可再更新，禁用 CardKit 流式让后续走 im.message.patch。
+      if (isCardElementLimitError(err)) {
+        log.warn('updateToolUseStatus: card element limit exceeded (300305), disabling CardKit streaming');
+        this.cardKit.cardKitCardId = null;
+        return;
+      }
       log.debug('updateToolUseStatus failed', { error: String(err) });
     }
   }

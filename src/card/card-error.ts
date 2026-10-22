@@ -21,6 +21,10 @@ export const CARD_ERROR = {
   RATE_LIMITED: 230020,
   /** 卡片内容创建失败（通用码，需检查子错误） */
   CARD_CONTENT_FAILED: 230099,
+  /** 卡片元素数量超限（body 级，card.update 直接返回） */
+  CARD_ELEMENT_LIMIT: 300305,
+  /** 流式模式已关闭（cardElement.content 在关流后返回） */
+  STREAMING_CLOSED: 300309,
 } as const;
 
 /** 230099 子错误码，嵌套在 msg 的 ErrCode 字段中。 */
@@ -138,6 +142,19 @@ export function isCardRateLimitError(err: unknown): boolean {
   const parsed = parseCardApiError(err);
   if (!parsed) return false;
   return parsed.code === CARD_ERROR.RATE_LIMITED;
+}
+
+/**
+ * 判断错误是否为卡片元素数量超限（300305 element exceeds the limit）。
+ *
+ * card.update 整卡重发时元素总数撞飞书硬上限（约 200）直接返回 body 级 300305。
+ * 生产日志（2026-10-21 17:44）实测：连续多次 300305 后所有后续更新被拒，
+ * 卡片永久停在最后一次成功状态（表现为工具行永远 Running）。
+ */
+export function isCardElementLimitError(err: unknown): boolean {
+  const parsed = parseCardApiError(err);
+  if (!parsed) return false;
+  return parsed.code === CARD_ERROR.CARD_ELEMENT_LIMIT || /element exceeds the limit/i.test(parsed.errMsg);
 }
 
 // ---------------------------------------------------------------------------

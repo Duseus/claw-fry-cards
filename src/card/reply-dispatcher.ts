@@ -425,6 +425,7 @@ export function createFeishuReplyDispatcher(params: CreateFeishuReplyDispatcherP
             shouldEmitToolResult: () => false,
             shouldEmitToolOutput: () => false,
             allowToolLifecycleWhenProgressHidden: true,
+            suppressDefaultToolProgressMessages: true,
           }
         : {}),
       onModelSelected: (ctx: { provider: string; model: string; thinkLevel: string | undefined }) => {

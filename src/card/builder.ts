@@ -47,6 +47,12 @@ export interface FeishuCard {
     wide_screen_mode: boolean;
     update_multi?: boolean;
     locales?: string[];
+    streaming_mode?: boolean;
+    streaming_config?: {
+      print_frequency_ms?: { default: number };
+      print_step?: { default: number };
+      print_strategy?: 'fast' | 'default';
+    };
     summary?: { content: string };
   };
   header?: {
@@ -536,8 +542,7 @@ export function buildCardContent(
         showToolUse: data.showToolUse,
         toolUseSteps: data.toolUseSteps,
         toolUseTitleSuffix: data.toolUseTitleSuffix,
-      });
-    case 'complete':
+      });    case 'complete':
       return buildCompleteCard({
         text: data.text ?? '',
         elapsedMs: data.elapsedMs,
@@ -586,23 +591,11 @@ function buildStreamingCard(
     reasoningText?: string;
   } = {},
 ): FeishuCard {
-  const { showToolUse = true, toolUseSteps, toolUseTitleSuffix, reasoningText } = params;
+  const { showToolUse = true, toolUseSteps, reasoningText } = params;
   const elements: CardElement[] = [];
-  const hasToolUse = Boolean(toolUseSteps?.length);
-
-  if (showToolUse) {
-    elements.push(
-      hasToolUse
-        ? buildToolUsePanel({
-            toolUseSteps,
-            titleSuffix: toolUseTitleSuffix,
-          })
-        : buildStreamingToolUsePendingPanel(),
-    );
-  }
 
   if (!partialText && reasoningText) {
-    // Reasoning phase: show reasoning content in notation style
+    // Reasoning phase: show reasoning content in notation style（hermes 顺序：正文区在最上）
     elements.push({
       tag: 'markdown',
       content: `💭 **Thinking...**\n\n${reasoningText}`,
@@ -613,16 +606,39 @@ function buildStreamingCard(
       text_size: 'notation',
     });
   } else if (partialText) {
-    // Answer phase: show answer content only
+    // Answer phase: show answer content only（正文在上，工具面板沉底 — hermes 同款布局）
     elements.push({
       tag: 'markdown',
       content: optimizeMarkdownStyle(partialText),
     });
   }
 
+  if (showToolUse) {
+    const visibleSteps = capStreamingToolUseSteps(toolUseSteps ?? []);
+    elements.push(
+      visibleSteps.length > 0
+        ? buildStreamingToolUseActivePanel({
+            steps: visibleSteps,
+            hiddenCount: (toolUseSteps?.length ?? 0) - visibleSteps.length,
+          })
+        : buildStreamingToolUsePendingPanel(),
+    );
+  }
+
   return {
     header: buildHermesHeader({ status: 'streaming' }),
-    config: { wide_screen_mode: true, update_multi: true, locales: ['zh_cn', 'en_us'] },
+    config: {
+      wide_screen_mode: true,
+      update_multi: true,
+      locales: ['zh_cn', 'en_us'],
+      // hermes 同款打字机配置：15ms/字、fast 策略（缺省时飞书默认逐段刷新，观感生硬）
+      streaming_mode: true,
+      streaming_config: {
+        print_frequency_ms: { default: 15 },
+        print_step: { default: 1 },
+        print_strategy: 'fast',
+      },
+    },
     elements,
   };
 }
@@ -830,6 +846,8 @@ function buildCompleteCard(params: {
           tag: 'plain_text',
           content: titleContentZh,
           i18n_content: { zh_cn: titleContentZh, en_us: titleContentEn },
+          text_color: 'grey',
+          text_size: 'notation',
         },
         vertical_align: 'center',
         icon: {
@@ -1042,16 +1060,11 @@ export function buildStreamingPreAnswerCard(params: {
   elapsedMs?: number;
   showToolUse?: boolean;
 }): Record<string, unknown> {
-  const { steps, elapsedMs, showToolUse = true } = params;
+  const { steps, showToolUse = true } = params;
   const hasSteps = Boolean(steps?.length);
   const elements: unknown[] = [];
 
-  if (showToolUse) {
-    elements.push(
-      hasSteps ? buildStreamingToolUseActivePanel({ steps: steps!, elapsedMs }) : buildStreamingToolUsePendingPanel(),
-    );
-  }
-
+  // hermes 同款布局：正文流式元素在上 → 工具面板沉底 → loading 图标在最后
   elements.push({
     tag: 'markdown',
     content: '',
@@ -1060,6 +1073,18 @@ export function buildStreamingPreAnswerCard(params: {
     margin: CARD_MARKDOWN_FLUSH_MARGIN,
     element_id: STREAMING_ELEMENT_ID,
   });
+
+  if (showToolUse) {
+    const visibleSteps = steps ? capStreamingToolUseSteps(steps) : [];
+    elements.push(
+      hasSteps
+        ? buildStreamingToolUseActivePanel({
+            steps: visibleSteps,
+            hiddenCount: (steps?.length ?? 0) - visibleSteps.length,
+          })
+        : buildStreamingToolUsePendingPanel(),
+    );
+  }
 
   elements.push({
     tag: 'markdown',
@@ -1080,6 +1105,12 @@ export function buildStreamingPreAnswerCard(params: {
     header: buildHermesHeader({ status: 'streaming' }),
     config: {
       streaming_mode: true,
+      // hermes 同款打字机配置：15ms/字、fast 策略
+      streaming_config: {
+        print_frequency_ms: { default: 15 },
+        print_step: { default: 1 },
+        print_strategy: 'fast',
+      },
       locales: ['zh_cn', 'en_us'],
       summary: {
         content: 'Processing...',
@@ -1087,57 +1118,6 @@ export function buildStreamingPreAnswerCard(params: {
       },
     },
     body: { elements },
-  };
-}
-
-/**
- * Build the collapsible panel for the active pre-answer phase.
- * Used by buildStreamingPreAnswerCard when at least one step exists.
- */
-function buildStreamingToolUseActivePanel(params: { steps: ToolUseDisplayStep[]; elapsedMs?: number }): CardElement {
-  const { steps, elapsedMs } = params;
-  const enParts = ['Tool use'];
-  const zhParts = ['工具执行'];
-
-  if (steps.length > 0) {
-    enParts.push(`${steps.length} step${steps.length === 1 ? '' : 's'}`);
-    zhParts.push(`${steps.length} 步`);
-  }
-
-  if (elapsedMs != null && elapsedMs > 0) {
-    const d = formatElapsed(elapsedMs);
-    enParts.push(`(${d})`);
-    zhParts.push(`(${d})`);
-  }
-
-  return {
-    tag: 'collapsible_panel',
-    expanded: true,
-    header: {
-      title: {
-        tag: 'plain_text',
-        content: `🛠️ ${enParts.join(' · ')}`,
-        i18n_content: {
-          zh_cn: `🛠️ ${zhParts.join(' · ')}`,
-          en_us: `🛠️ ${enParts.join(' · ')}`,
-        },
-        text_color: 'grey',
-        text_size: 'notation',
-      },
-      vertical_align: 'center',
-      icon: {
-        tag: 'standard_icon',
-        token: 'down-small-ccm_outlined',
-        color: 'grey',
-        size: '16px 16px',
-      },
-      icon_position: 'right',
-      icon_expanded_angle: -180,
-    },
-    border: { color: 'grey', corner_radius: '5px' },
-    vertical_spacing: CARD_PANEL_VERTICAL_SPACING,
-    padding: CARD_PANEL_PADDING,
-    elements: steps.flatMap((step) => buildToolUseStepElements(step)),
   };
 }
 
@@ -1180,6 +1160,78 @@ function buildStreamingToolUsePendingPanel(): CardElement {
     vertical_spacing: CARD_PANEL_VERTICAL_SPACING,
     padding: CARD_PANEL_PADDING,
     elements: [],
+  };
+}
+
+/**
+ * 流式阶段工具面板元素预算。
+ *
+ * 每个可见步骤最多占 7 个卡片元素（title 1 + detail 2 + output/error 4），
+ * 飞书 CardKit 卡片元素硬上限约 200；整卡重发一旦超过就报 300305，
+ * 且此后所有更新都会被拒（卡片永久卡在最后一次成功状态，表现为工具行永远 Running）。
+ * 因此流式阶段只展示最近 N 步，更早的合并进标题计数；完成态走统一面板（有独立控制）。
+ *
+ * 预算推导：可见步骤 × 7 + 面板骨架 3 + loading/正文区 ~30 预留 ≤ 120，留足余量。
+ */
+const STREAMING_TOOL_USE_MAX_STEPS = 12;
+
+function capStreamingToolUseSteps(steps: ToolUseDisplayStep[]): ToolUseDisplayStep[] {
+  return steps.length > STREAMING_TOOL_USE_MAX_STEPS ? steps.slice(-STREAMING_TOOL_USE_MAX_STEPS) : steps;
+}
+
+/**
+ * 流式阶段的工具执行面板（hermes 同款：常驻底部，实时刷新）。
+ *
+ * 与完成态 buildToolUsePanel 的区别：
+ * - expanded: true（执行中默认展开，用户不用手动点开看进度）
+ * - 标题带实时状态 “工具执行中”，完成态换成耗时统计
+ * - 超预算的早期步骤折叠进标题（+N 更早步骤），不撞 300305
+ */
+function buildStreamingToolUseActivePanel(params: {
+  steps: ToolUseDisplayStep[];
+  hiddenCount?: number;
+}): CardElement {
+  const { steps, hiddenCount = 0 } = params;
+  const enParts = ['Tool use'];
+  const zhParts = ['工具执行中'];
+
+  if (steps.length > 0) {
+    enParts.push(`${steps.length} step${steps.length === 1 ? '' : 's'}`);
+    zhParts.push(`${steps.length} 步`);
+  }
+  if (hiddenCount > 0) {
+    enParts.push(`+${hiddenCount} earlier`);
+    zhParts.push(`+${hiddenCount} 更早步骤`);
+  }
+
+  return {
+    tag: 'collapsible_panel',
+    expanded: true,
+    header: {
+      title: {
+        tag: 'plain_text',
+        content: `🛠️ ${enParts.join(' · ')}`,
+        i18n_content: {
+          zh_cn: `🛠️ ${zhParts.join(' · ')}`,
+          en_us: `🛠️ ${enParts.join(' · ')}`,
+        },
+        text_color: 'grey',
+        text_size: 'notation',
+      },
+      vertical_align: 'center',
+      icon: {
+        tag: 'standard_icon',
+        token: 'down-small-ccm_outlined',
+        color: 'grey',
+        size: '16px 16px',
+      },
+      icon_position: 'right',
+      icon_expanded_angle: -180,
+    },
+    border: { color: 'grey', corner_radius: '5px' },
+    vertical_spacing: CARD_PANEL_VERTICAL_SPACING,
+    padding: CARD_PANEL_PADDING,
+    elements: steps.flatMap((step) => buildToolUseStepElements(step)),
   };
 }
 

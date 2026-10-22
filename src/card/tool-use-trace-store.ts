@@ -86,6 +86,40 @@ export function recordToolUseStart(params: {
   }
 
   const now = Date.now();
+
+  // 去重：若已存在相同 toolCallId，或相同工具名在 running 状态且参数/时间相近的步骤，原地更新避免重复插入
+  const sanitizedParams = sanitizeTraceValue(toolParams, 0, { source: 'params' }) as Record<string, unknown> | undefined;
+  if (toolCallId) {
+    for (let index = state.steps.length - 1; index >= 0; index -= 1) {
+      const step = state.steps[index];
+      if (step && step.toolCallId === toolCallId) {
+        if (!step.params && sanitizedParams) step.params = sanitizedParams;
+        if (runId && !step.runId) step.runId = runId;
+        state.updatedAt = now;
+        return;
+      }
+    }
+  }
+
+  const normalizedToolName = normalizeToolName(toolName);
+  const paramsKey = fingerprintTraceValue(sanitizedParams);
+  for (let index = state.steps.length - 1; index >= 0; index -= 1) {
+    const step = state.steps[index];
+    if (!step || step.status !== 'running') continue;
+    // 若两边都有不同的 toolCallId，说明是不同的并发调用，不能去重
+    if (step.toolCallId && toolCallId && step.toolCallId !== toolCallId) continue;
+    if (normalizeToolName(step.toolName) !== normalizedToolName) continue;
+    // 仅在 5 秒内的同名调用去重，防止混淆跨轮次步骤
+    if (now - step.startedAt > 5000) continue;
+    if (fingerprintTraceValue(step.params) === paramsKey || !step.params || !sanitizedParams) {
+      if (toolCallId && !step.toolCallId) step.toolCallId = toolCallId;
+      if (runId && !step.runId) step.runId = runId;
+      if (!step.params && sanitizedParams) step.params = sanitizedParams;
+      state.updatedAt = now;
+      return;
+    }
+  }
+
   if (state.steps.length >= MAX_STEPS_PER_SESSION) {
     state.steps.splice(0, state.steps.length - MAX_STEPS_PER_SESSION + 1);
   }
@@ -95,7 +129,7 @@ export function recordToolUseStart(params: {
     toolName,
     toolCallId: toolCallId || undefined,
     runId: runId || undefined,
-    params: sanitizeTraceValue(toolParams, 0, { source: 'params' }) as Record<string, unknown> | undefined,
+    params: sanitizedParams,
     status: 'running',
     startedAt: now,
   });
@@ -143,6 +177,44 @@ export function recordToolUseEnd(params: {
     }
     state.updatedAt = now;
     return;
+  }
+
+  // 去重：end 事件可能没有匹配中的 running 步骤（start 丢失、重复 end、trace 中途被清）。
+  // 盲目追加会在卡片上产生重复行（生产实测「同一条命令出现两条 Running」的来源之一）。
+  // 先按 toolCallId / 同名同参数指纹找已有步骤原地更新，实在匹配不到才追加。
+  if (toolCallId) {
+    for (let index = state.steps.length - 1; index >= 0; index -= 1) {
+      const step = state.steps[index];
+      if (step && step.toolCallId === toolCallId) {
+        step.status = error ? 'error' : 'success';
+        step.result = sanitizeTraceValue(result, 0, { source: 'result' });
+        step.error = error ? truncateText(error, 160) : undefined;
+        step.durationMs = durationMs ?? step.durationMs ?? Math.max(0, now - step.startedAt);
+        step.finishedAt = now;
+        state.updatedAt = now;
+        return;
+      }
+    }
+  }
+
+  const endParamsKey = fingerprintTraceValue(sanitizedParams);
+  const endToolName = toolName ? normalizeToolName(toolName) : '';
+  if (endToolName) {
+    for (let index = state.steps.length - 1; index >= 0; index -= 1) {
+      const step = state.steps[index];
+      if (!step || step.status === 'running') continue;
+      if (normalizeToolName(step.toolName) !== endToolName) continue;
+      if (fingerprintTraceValue(step.params) !== endParamsKey) continue;
+      // 只吸收 10 秒内的重复 end：更早的同名步骤大概率是另一次真实调用
+      if (now - (step.finishedAt ?? step.startedAt) > 10_000) break;
+      step.status = error ? 'error' : 'success';
+      step.result = sanitizeTraceValue(result, 0, { source: 'result' });
+      step.error = error ? truncateText(error, 160) : undefined;
+      step.durationMs = durationMs ?? step.durationMs ?? Math.max(0, now - step.startedAt);
+      step.finishedAt = now;
+      state.updatedAt = now;
+      return;
+    }
   }
 
   state.steps.push({

@@ -579,3 +579,63 @@ describe('runId-based isolation', () => {
     expect(steps[0]!.runId).toBe('run-I');
   });
 });
+
+// ---------------------------------------------------------------------------
+// recordToolUseStart deduplication
+// ---------------------------------------------------------------------------
+
+describe("recordToolUseStart deduplication", () => {
+  it("deduplicates multiple start calls with the same toolCallId", () => {
+    const sk = "sess-dedup-tcid";
+    startToolUseTraceRun(sk);
+
+    recordToolUseStart({
+      sessionKey: sk,
+      toolName: "exec",
+      toolParams: { command: "ls" },
+      toolCallId: "call-dup-1",
+    });
+    // Second start from another hook source with same toolCallId
+    recordToolUseStart({
+      sessionKey: sk,
+      toolName: "exec",
+      toolParams: { command: "ls" },
+      toolCallId: "call-dup-1",
+    });
+
+    const steps = getToolUseTraceSteps(sk);
+    expect(steps).toHaveLength(1);
+    expect(steps[0]).toMatchObject({
+      toolName: "exec",
+      status: "running",
+      toolCallId: "call-dup-1",
+    });
+  });
+
+  it("deduplicates start call without toolCallId matching existing running call", () => {
+    const sk = "sess-dedup-notcid";
+    startToolUseTraceRun(sk);
+
+    // First start from onToolStart (has toolCallId)
+    recordToolUseStart({
+      sessionKey: sk,
+      toolName: "read",
+      toolParams: { file_path: "/a.ts" },
+      toolCallId: "call-dup-2",
+    });
+    // Second start from before_tool_call (may lack toolCallId or share params)
+    recordToolUseStart({
+      sessionKey: sk,
+      toolName: "read",
+      toolParams: { file_path: "/a.ts" },
+    });
+
+    const steps = getToolUseTraceSteps(sk);
+    expect(steps).toHaveLength(1);
+    expect(steps[0]).toMatchObject({
+      toolName: "read",
+      status: "running",
+      toolCallId: "call-dup-2",
+    });
+  });
+});
