@@ -1163,10 +1163,13 @@ export class StreamingCardController {
     if (!this.cardKit.cardKitCardId || this.isTerminalPhase) return;
     try {
       const display = this.computeToolUseDisplay();
+      const lastRunningStep = display?.steps?.slice().reverse().find((s) => s.status === 'running');
+      const currentTool = lastRunningStep?.detail ? `${lastRunningStep.title}: ${lastRunningStep.detail}` : lastRunningStep?.title;
       const card = buildStreamingPreAnswerCard({
         steps: display?.steps,
         elapsedMs: this.visibleToolUseElapsedMs,
         showToolUse: this.shouldDisplayToolUse,
+        currentTool,
       });
       this.cardKit.cardKitSequence += 1;
       await updateCardKitCard({

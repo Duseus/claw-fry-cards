@@ -532,6 +532,22 @@ function handleInjectPromptAction(ctx: MonitorContext, data: unknown): unknown {
 
 export async function handleCardActionEvent(ctx: MonitorContext, data: unknown): Promise<unknown> {
   try {
+    // abort_session：物理打断按钮拦截（一键停止当前 Agent 执行）
+    const ev = data as any;
+    if (ev?.action?.value?.action === 'abort_session') {
+      const chatId = ev.open_chat_id ?? ev.context?.open_chat_id;
+      if (chatId) {
+        const queueKey = buildQueueKey(ctx.accountId, chatId);
+        const active = getActiveDispatcher(queueKey);
+        if (active) {
+          active.abortController?.abort();
+          active.abortCard().catch(() => {});
+          return { toast: { type: 'info', content: '已停止生成' } };
+        }
+      }
+      return { toast: { type: 'info', content: '任务已结束或已停止' } };
+    }
+
     // inject_prompt：通用「按钮点击 = 注入一条用户消息」机制（渠道内建，优先拦截）。
     const injectResult = handleInjectPromptAction(ctx, data);
     if (injectResult !== undefined) return injectResult;

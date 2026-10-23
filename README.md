@@ -2,7 +2,7 @@
 
 # 🕊️ claw-lark-cards — OpenClaw 飞书通道原生流式卡片插件
 
-**OpenClaw 飞书 / Lark 通道插件：CardKit v2.0 流式消息 · Hermes 风格顶级卡片 · 实时工具步骤追踪 · 统一指标面板 · 峰谷价标识**
+**OpenClaw 飞书 / Lark 通道插件：CardKit v2.0 流式消息 · Hermes 风格顶级卡片 · 实时工具步骤追踪 · 一键停止按钮 · 自适应长文本保护 · 统一指标面板 · 峰谷价标识**
 
 [![Release](https://img.shields.io/github/v/release/Duseus/claw-lark-cards?label=%E7%89%88%E6%9C%AC&color=2563eb)](https://github.com/Duseus/claw-lark-cards/releases/latest)
 [![CI](https://img.shields.io/github/actions/workflow/status/Duseus/claw-lark-cards/ci.yml?branch=main&label=CI)](https://github.com/Duseus/claw-lark-cards/actions/workflows/ci.yml)
@@ -17,7 +17,7 @@
 </div>
 
 > **这是什么**：一个专为 **OpenClaw Agent** 深度打造的**飞书 / Lark 原生通道插件**（完全替代官方已停更的 `@larksuite/openclaw-lark` / `@openclaw/feishu`）。负责 OpenClaw Agent 的全功能飞书消息收发，并以 **CardKit v2.0 原生流式卡片 + Hermes 风格顶级状态面板** 呈现每一轮交互。  
-> **项目背景与独立维护说明**：本项目基于社区优秀的开源项目 [techysy/claw-fry-cards](https://github.com/techysy/claw-fry-cards) 深度二次研发，由 **Duseus** 团队作为独立代码仓维护。在全面吸收 upstream 优秀卡片架构的基础上，补齐了 Hermes 级原生卡片视觉规范、实时工具执行流水线折叠追踪、工具去重与生命周期防抖，以及针对 OpenClaw 2.0 (2026.10.x+) 底层 SQLite 转录的深度融合适配。
+> **项目背景与独立维护说明**：本项目基于社区优秀的开源项目 [techysy/claw-fry-cards](https://github.com/techysy/claw-fry-cards) 深度二次研发，由 **Duseus** 团队作为独立代码仓维护。在全面吸收 upstream 优秀卡片架构的基础上，补齐了 Hermes 级原生卡片视觉规范、流式实时命令执行透明化、一键物理停止生成按钮、自适应长卡片撑爆保护，以及针对 OpenClaw 2.0 (2026.10.x+) 底层 SQLite 转录的深度融合适配。
 
 ---
 
@@ -42,12 +42,16 @@
 全面对齐 Hermes / Antigravity 工业级飞书流式交互规范，告别粗糙纯文本与散乱卡片：
 
 - 🎨 **Card 2.0 顶级彩色状态条 Header**：
-  - 💭 **处理中...**（流式思考生成中，采用清爽的 `blue` 蓝条，调用工具时实时跳动 `⚡ {toolName}` 指示器）；
+  - 💭 **处理中...**（流式思考生成中，采用清爽的 `blue` 蓝条，调用工具时动态指示 `⚡ {toolName}: {command/detail}`）；
   - ✅ **已完成**（正常收官，优雅的 `green` 绿条）；
   - ❌ **执行出错 / 已停止**（异常即时红条预警，错误原因一目了然）。
-- 🛠️ **实时工具调用流水追踪面板**：
+- 🛠️ **实时工具流水透明化与动态命令展示**：
   - 首创在思考流式阶段注入折叠进度条：`🧠 1 轮 · 🛠️ N 个工具 · ⏳ 0.0 秒`；
-  - 点开即可清晰查阅每一步工具调用的入参、耗时与执行状态，支持工具生命周期去重，杜绝幽灵步骤与重复刷屏！
+  - 实时解析工具入参与脚本命令，动态透视正在执行的操作细节（如 `Run command: git status`），等待不再两眼一抹黑！
+- ⏹️ **流式物理停止按钮（一键打断）**：
+  - 在生成中的卡片底部原生注入 **「⏹️ 停止生成」** 交互按钮；用户一键点击直接毫秒级中断本地会话执行，并即时弹出飞书 Toast 反馈！
+- 🛡️ **自适应长文本截断保护（Anti-Runaway）**：
+  - 对单个超长工具输出（如数千行编译日志或数据转储）进行智能折叠截断保护，彻底防止飞书单卡 30KB 撑爆导致的卡片报错退化！
 - 📝 **极简 3 行流式小字底栏**：
   - **Line 1（状态与指标）**：`✅ 已完成 · 38.7s · ⚕glm-5.3-flash · 输入 31.8K 输出 1.6K 思考 859 · 31.8K/128K (25%)`；
   - **Line 2（实时环境）**：`☀️ 杭州 26.0/20.0°C · 湿度 88% · 空气质量 70 · 日出 06:03 日落 17:23`（异步静默极速直达）；
@@ -77,7 +81,19 @@
 - OpenClaw ≥ 2026.5.4（强烈推荐 **2026.10.3+**）
 - Node.js ≥ 22
 
-### 源码一键构建安装（官方推荐独立路径）
+### 方式一：一键脚本构建安装（推荐 · Agent 友好）
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Duseus/claw-lark-cards/main/install.sh | bash
+```
+
+脚本将自动克隆当前仓库源码、构建 ESM 产物并注册到 OpenClaw 网关。安装完成后重启网关生效：
+
+```bash
+openclaw gateway restart
+```
+
+### 方式二：源码克隆安装
 
 ```bash
 # 1. 克隆 Duseus 独立代码仓库
@@ -102,6 +118,8 @@ openclaw gateway restart
 ## ⚙️ 配置指南
 
 在 `~/.openclaw/openclaw.json` 中配置飞书凭据与流式面板：
+
+> 💡 **架构贴士**：为保持与现有配置及 Control UI 设置项的 100% 向上兼容，底层插件配置节点维持 `claw-fry-cards` 键名不变，存量配置无缝平滑迁移。
 
 ```json
 {

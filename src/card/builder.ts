@@ -1056,11 +1056,12 @@ export function buildStreamingThinkingCard(showToolUse = true): Record<string, u
  * Used both for the initial card and for live updates during tool calls.
  */
 export function buildStreamingPreAnswerCard(params: {
+  currentTool?: string;
   steps?: ToolUseDisplayStep[];
   elapsedMs?: number;
   showToolUse?: boolean;
 }): Record<string, unknown> {
-  const { steps, showToolUse = true } = params;
+  const { steps, showToolUse = true, currentTool } = params;
   const hasSteps = Boolean(steps?.length);
   const elements: unknown[] = [];
 
@@ -1087,22 +1088,27 @@ export function buildStreamingPreAnswerCard(params: {
   }
 
   elements.push({
-    tag: 'markdown',
-    content: ' ',
-    text_align: 'left',
-    text_size: 'normal_v2',
-    margin: CARD_MARKDOWN_FLUSH_MARGIN,
-    icon: {
-      tag: 'custom_icon',
-      img_key: 'img_v3_02vb_496bec09-4b43-4773-ad6b-0cdd103cd2bg',
-      size: '16px 16px',
+    tag: 'div',
+    text: {
+      tag: 'plain_text',
+      content: ' ',
     },
-    element_id: 'loading_icon',
+    extra: {
+      tag: 'button',
+      text: {
+        tag: 'plain_text',
+        content: '⏹️ 停止生成',
+        i18n_content: { zh_cn: '⏹️ 停止生成', en_us: '⏹️ Stop' },
+      },
+      type: 'danger',
+      size: 'small',
+      value: { action: 'abort_session' },
+    },
   });
 
   return {
     schema: '2.0',
-    header: buildHermesHeader({ status: 'streaming' }),
+    header: buildHermesHeader({ status: 'streaming', currentTool }),
     config: {
       streaming_mode: true,
       // hermes 同款打字机配置：15ms/字、fast 策略
@@ -1397,7 +1403,11 @@ function formatToolUseStepStatus(status: ToolUseDisplayStep['status']): { label:
 }
 
 function formatToolUseCodeBlock(content: string, language: 'json' | 'text'): string {
-  const normalized = content.replace(/\r\n/g, '\n').trim();
+  let normalized = content.replace(/\r\n/g, '\n').trim();
+  // 自适应长文本折叠保护：单个工具输出超过 3000 字符时自动截断保护，防止飞书单卡 30KB 撑爆
+  if (normalized.length > 3000) {
+    normalized = normalized.slice(0, 2900) + '\n\n... [Output truncated for Feishu Card length protection] ...';
+  }
   const fence = '`'.repeat(Math.max(3, longestBacktickRun(normalized) + 1));
   return `${fence}${language}\n${normalized}\n${fence}`;
 }

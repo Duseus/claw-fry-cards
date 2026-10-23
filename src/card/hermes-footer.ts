@@ -23,8 +23,9 @@ export function buildHermesHeader(params: HermesHeaderConfig) {
   let zh = cfg.zh;
   let en = cfg.en;
   if (status === 'streaming' && currentTool) {
-    zh = `${zh} ⚡ ${currentTool.slice(0, 8)}`;
-    en = `${en} ⚡ ${currentTool.slice(0, 8)}`;
+    const toolText = currentTool.length > 25 ? `${currentTool.slice(0, 22)}...` : currentTool;
+    zh = `${zh} ⚡ ${toolText}`;
+    en = `${en} ⚡ ${toolText}`;
   }
   return {
     title: {
